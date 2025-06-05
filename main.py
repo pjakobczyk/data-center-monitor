@@ -23,7 +23,11 @@ def safe_parse(url, retries=3, wait=3):
         except Exception as e:
             print(f"[{url}] Błąd ({attempt+1}/{retries}): {e}")
             time.sleep(wait)
-    return {"entries": []}
+    class EmptyFeed:
+    entries = []
+
+return EmptyFeed()
+
 
 # Słowa kluczowe i firmy
 TENDER_KEYWORDS = [
