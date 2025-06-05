@@ -43,3 +43,75 @@ def detect_country(text):
             return country
     return None
 
+try:
+    df_old = pd.read_excel("data_center_monitoring.xlsx")
+except:
+    df_old = pd.DataFrame(columns=["Data pozyskania", "Kraj", "Miasto / Lokalizacja", "Firma / Projekt", "Typ", "Status", "Opis", "Link źródłowy"])
+
+new_records = []
+
+for source, url in FEEDS.items():
+    feed = feedparser.parse(url)
+    for entry in feed.entries:
+        title = entry.get("title", "")
+        summary = entry.get("summary", "")
+        link = entry.get("link", "")
+        content = f"{title} {summary}".lower()
+
+        if any(k.lower() in content for k in KEYWORDS):
+            country = detect_country(content)
+            if not country:
+                continue
+
+            new_records.append({
+                "Data pozyskania": datetime.now().strftime("%Y-%m-%d %H:%M"),
+                "Kraj": country,
+                "Miasto / Lokalizacja": "(do uzupełnienia)",
+                "Firma / Projekt": title[:60],
+                "Typ": "(do uzupełnienia)",
+                "Status": "Nowy",
+                "Opis": summary[:200],
+                "Link źródłowy": link
+            })
+
+# ⬇️ TEST – wpis z unikalnym linkiem, żeby zawsze był nowy
+new_records.append({
+    "Data pozyskania": datetime.now().strftime("%Y-%m-%d %H:%M"),
+    "Kraj": "Germany",
+    "Miasto / Lokalizacja": "Frankfurt",
+    "Firma / Projekt": "🔧 Test: Nowy projekt Data Center",
+    "Typ": "Test",
+    "Status": "Nowy",
+    "Opis": "To jest testowy wpis do celów walidacji systemu: alerty, Excel, e-mail, webhook.",
+    "Link źródłowy": f"https://example.com/test-entry-v2"
+})
+
+df_new = pd.DataFrame(new_records)
+df_combined = pd.concat([df_old, df_new]).drop_duplicates(subset=["Link źródłowy"])
+df_combined.to_excel("data_center_monitoring.xlsx", index=False)
+
+# Email alert
+if len(df_new) > 0 and EMAIL and PASSWORD:
+    body = "<h3>New Data Center Alerts:</h3><ul>"
+    for _, row in df_new.iterrows():
+        body += f"<li><a href='{row['Link źródłowy']}'>{row['Firma / Projekt']}</a> – {row['Opis'][:100]}...</li>"
+    body += "</ul>"
+
+    msg = MIMEMultipart()
+    msg['From'] = EMAIL
+    msg['To'] = EMAIL
+    msg['Subject'] = "📡 New Data Center Projects"
+    msg.attach(MIMEText(body, 'html'))
+
+    server = smtplib.SMTP('smtp.gmail.com', 587)
+    server.starttls()
+    server.login(EMAIL, PASSWORD)
+    server.send_message(msg)
+    server.quit()
+
+# Webhook alert
+if len(df_new) > 0 and WEBHOOK_URL:
+    message = "📢 New Data Center Alerts:\n"
+    for _, row in df_new.iterrows():
+        message += f"🔹 {row['Firma / Projekt']} → {row['Link źródłowy']}\n"
+    requests.post(WEBHOOK_URL, json={"content": message})
