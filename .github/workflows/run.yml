@@ -2,7 +2,7 @@ name: Run Data Center Monitor
 
 on:
   schedule:
-    - cron: '0 * * * *'
+    - cron: '0 * * * *'  # co godzinę
   workflow_dispatch:
 
 jobs:
@@ -19,8 +19,7 @@ jobs:
           python-version: '3.11'
 
       - name: Install dependencies
-  run: pip install feedparser pandas openpyxl matplotlib requests
-
+        run: pip install feedparser pandas openpyxl matplotlib requests
 
       - name: Run script
         env:
@@ -43,8 +42,8 @@ jobs:
           git config --global user.name "github-actions"
           git config --global user.email "actions@github.com"
           git pull origin main --rebase || true
-          git add data_center_monitoring.xlsx || true
+          git add data_center_monitoring.xlsx data_center_monitoring.csv projekty_wg_kraju.png projekty_wg_miesiaca.png || true
           git status
           git diff --cached --quiet && echo "No changes to commit" || \
-            (git commit -m "Update XLSX [auto]" && \
+            (git commit -m "Update XLSX/CSV/Charts [auto]" && \
              git push https://x-access-token:${{ secrets.GITHUB_TOKEN }}@github.com/${{ github.repository }}.git HEAD:main || true)
