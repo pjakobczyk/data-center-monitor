@@ -103,3 +103,14 @@ if len(df_new) > 0 and WEBHOOK_URL:
     for _, row in df_new.iterrows():
         message += f"🔹 {row['Firma / Projekt']} → {row['Link źródłowy']}\n"
     requests.post(WEBHOOK_URL, json={"content": message})
+# TEST – FAKE ENTRY DO SPRAWDZENIA SYSTEMU
+new_records.append({
+    "Data pozyskania": datetime.now().strftime("%Y-%m-%d %H:%M"),
+    "Kraj": "Germany",
+    "Miasto / Lokalizacja": "Frankfurt",
+    "Firma / Projekt": "Testowy projekt Data Center",
+    "Typ": "Test",
+    "Status": "Nowy",
+    "Opis": "To jest testowy wpis generowany ręcznie w celu sprawdzenia działania alertów.",
+    "Link źródłowy": "https://example.com/test-entry"
+})
