@@ -1,3 +1,4 @@
+
 import feedparser
 import pandas as pd
 import matplotlib.pyplot as plt
@@ -23,27 +24,16 @@ def safe_parse(url):
             entries = []
         return EmptyFeed()
 
-TENDER_KEYWORDS = [
-    "construction", "expansion", "building permit", "tender", "contract", "development",
-    "investment", "planning", "project", "site acquisition", "civil works", "procurement",
-    "EPC", "approved site", "new facility", "rfp", "rfq"
-]
+TENDER_KEYWORDS = ["construction", "expansion", "building permit", "tender", "contract", "development", "investment", "planning", "project", "site acquisition", "civil works", "procurement", "EPC", "approved site", "new facility", "rfp", "rfq"]
 
 SERVICE_KEYWORDS = [
-    "mep", "hvac", "cooling", "ventilation", "bms", "heat recovery", "vrf", "rooftop unit",
-    "ductwork", "airflow", "fire protection", "commissioning", "fit-out", "structured cabling",
-    "electrical installation", "electrical infrastructure", "ups", "genset", "containment",
-    "electrical", "mechanical", "power", "technical room", "building envelope", "raised floor",
-    "concrete frame", "steel structure", "clean room", "data center", "dc cooling",
-    "prefabrication", "prefab", "pipe installation", "pipework", "steel prefabrication",
-    "spawanie", "welding", "rury", "pipes", "kanały", "ducts", "izolacja", "insulation",
-    "montaż", "installation", "montaz rurociągów", "pipe assembly", "metal fabrication",
-    "sheet metal", "pipe supports", "structure supports", "konstrukcje stalowe", "stalowe kanały",
-    "wsporniki", "podpory", "technical services", "fabrication", "warsztat", "workshop",
-    "engineering support", "on-site installation", "assembly", "prefabrykacja", "trays",
-    "drip trays", "drain trays", "ociekowe", "tace ociekowe", "mezzanine", "platform",
-    "pomiar", "pomiary", "3d scanning", "inwentaryzacja", "cad", "projektowanie", "3d model",
-    "laser scanning", "scan to bim", "3d documentation", "revit", "modelowanie"
+    "mep", "hvac", "cooling", "ventilation", "bms", "heat recovery", "vrf", "rooftop unit", "ductwork", "airflow", "fire protection", "commissioning", "fit-out", "structured cabling",
+    "electrical installation", "electrical infrastructure", "ups", "genset", "containment", "electrical", "mechanical", "power", "technical room", "building envelope", "raised floor",
+    "concrete frame", "steel structure", "clean room", "data center", "dc cooling", "prefabrication", "prefab", "pipe installation", "pipework", "steel prefabrication", "spawanie",
+    "welding", "rury", "pipes", "kanały", "ducts", "izolacja", "insulation", "montaż", "installation", "montaz rurociągów", "pipe assembly", "metal fabrication", "sheet metal",
+    "pipe supports", "structure supports", "konstrukcje stalowe", "stalowe kanały", "wsporniki", "podpory", "technical services", "fabrication", "warsztat", "workshop",
+    "engineering support", "on-site installation", "assembly", "prefabrykacja", "trays", "drip trays", "drain trays", "ociekowe", "tace ociekowe", "mezzanine", "platform",
+    "pomiar", "pomiary", "3d scanning", "inwentaryzacja", "cad", "projektowanie", "3d model", "laser scanning", "scan to bim", "3d documentation", "revit", "modelowanie"
 ]
 
 COUNTRIES = {
@@ -135,50 +125,48 @@ if len(df_combined) > 0:
     plt.savefig("projekty_wg_miesiaca.png")
     plt.clf()
 
-if len(df_new) > 0:
-    high = df_new[df_new["WARTO_ANALIZY"] == "TAK"]
-    normal = df_new[df_new["WARTO_ANALIZY"] == ""]
+# Wysyłka nawet jeśli df_new == 0
+high = df_new[df_new["WARTO_ANALIZY"] == "TAK"]
+normal = df_new[df_new["WARTO_ANALIZY"] == ""]
 
-    if EMAIL and PASSWORD:
-        msg = MIMEMultipart()
-        msg['From'] = EMAIL
-        msg['To'] = EMAIL
-        msg['Subject'] = "📡 Nowe Projekty Data Center – CSA/MEP"
+msg_text = ""
+if not df_new.empty:
+    msg_text += "**🔶 WARTO ANALIZY:**\n" if not high.empty else ""
+    for _, r in high.iterrows():
+        msg_text += f"• {r['Firma']} → {r['Link']}\n"
+    msg_text += "\n**🔹 Pozostałe:**\n" if not normal.empty else ""
+    for _, r in normal.iterrows():
+        msg_text += f"• {r['Firma']} → {r['Link']}\n"
+else:
+    msg_text = "🚫 Brak nowych dopasowań spełniających kryteria (data center + CSA/MEP)."
 
-        body = "<h3>🔶 WARTO ANALIZY:</h3><ul>"
-        for _, r in high.iterrows():
-            body += f"<li><a href='{r['Link']}'>{r['Firma']}</a> – {r['Opis'][:100]}...</li>"
-        body += "</ul><h3>🔹 Pozostałe:</h3><ul>"
-        for _, r in normal.iterrows():
-            body += f"<li><a href='{r['Link']}'>{r['Firma']}</a> – {r['Opis'][:100]}...</li>"
-        body += "</ul>"
-        msg.attach(MIMEText(body, 'html'))
+if EMAIL and PASSWORD:
+    msg = MIMEMultipart()
+    msg['From'] = EMAIL
+    msg['To'] = EMAIL
+    msg['Subject'] = "📡 Raport Data Center – CSA/MEP"
 
-        for file in ["projekty_wg_kraju.png", "projekty_wg_miesiaca.png"]:
-            if os.path.exists(file):
-                with open(file, "rb") as f:
-                    part = MIMEBase('application', 'octet-stream')
-                    part.set_payload(f.read())
-                    encoders.encode_base64(part)
-                    part.add_header('Content-Disposition', f'attachment; filename= {file}')
-                    msg.attach(part)
+    body = f"<pre>{msg_text}</pre>"
+    msg.attach(MIMEText(body, 'html'))
 
-        server = smtplib.SMTP('smtp.gmail.com', 587)
-        server.starttls()
-        server.login(EMAIL, PASSWORD)
-        server.send_message(msg)
-        server.quit()
+    for file in ["projekty_wg_kraju.png", "projekty_wg_miesiaca.png", "data_center_monitoring.csv"]:
+        if os.path.exists(file):
+            with open(file, "rb") as f:
+                part = MIMEBase('application', 'octet-stream')
+                part.set_payload(f.read())
+                encoders.encode_base64(part)
+                part.add_header('Content-Disposition', f'attachment; filename= {file}')
+                msg.attach(part)
 
-    if WEBHOOK_URL:
-        msg = "**🔶 WARTO ANALIZY:**\n" if not high.empty else ""
-        for _, r in high.iterrows():
-            msg += f"• {r['Firma']} → {r['Link']}\n"
-        msg += "\n**🔹 Pozostałe:**\n" if not normal.empty else ""
-        for _, r in normal.iterrows():
-            msg += f"• {r['Firma']} → {r['Link']}\n"
+    server = smtplib.SMTP('smtp.gmail.com', 587)
+    server.starttls()
+    server.login(EMAIL, PASSWORD)
+    server.send_message(msg)
+    server.quit()
 
-        requests.post(WEBHOOK_URL, json={"content": msg.strip()})
-        for file in ["projekty_wg_kraju.png", "projekty_wg_miesiaca.png"]:
-            if os.path.exists(file):
-                with open(file, "rb") as f:
-                    requests.post(WEBHOOK_URL, files={"file": (file, f)})
+if WEBHOOK_URL:
+    requests.post(WEBHOOK_URL, json={"content": msg_text.strip()})
+    for file in ["projekty_wg_kraju.png", "projekty_wg_miesiaca.png"]:
+        if os.path.exists(file):
+            with open(file, "rb") as f:
+                requests.post(WEBHOOK_URL, files={"file": (file, f)})
