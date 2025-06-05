@@ -9,48 +9,41 @@ from email.mime.base import MIMEBase
 from email import encoders
 import requests
 import os
-import time
 
 EMAIL = os.getenv("EMAIL_USER")
 PASSWORD = os.getenv("EMAIL_PASS")
 WEBHOOK_URL = os.getenv("WEBHOOK_URL")
 
-# Retry logic
-def safe_parse(url, retries=3, wait=3):
-    for attempt in range(retries):
-        try:
-            return feedparser.parse(url)
-        except Exception as e:
-            print(f"[{url}] Błąd ({attempt+1}/{retries}): {e}")
-            time.sleep(wait)
+def safe_parse(url):
+    try:
+        return feedparser.parse(url)
+    except Exception as e:
+        print(f"[{url}] Błąd: {e}")
+        class EmptyFeed:
+            entries = []
+        return EmptyFeed()
 
-    class EmptyFeed:
-        entries = []
-
-    return EmptyFeed()
-
-
-
-# Słowa kluczowe i firmy
 TENDER_KEYWORDS = [
-    "construction", "expansion", "building permit", "tender", "contract", "development", "investment",
-    "planning", "project", "site acquisition", "civil works", "procurement", "EPC", "approved site",
-    "new facility", "rfp", "rfq"
+    "construction", "expansion", "building permit", "tender", "contract", "development",
+    "investment", "planning", "project", "site acquisition", "civil works", "procurement",
+    "EPC", "approved site", "new facility", "rfp", "rfq"
 ]
 
 SERVICE_KEYWORDS = [
-    "hvac", "cooling", "ventilation", "bms", "heat recovery", "vrf", "rooftop unit", "steel structure",
-    "welding", "prefab", "bim", "cad", "fabrication", "mech", "commissioning", "dms", "inspection",
-    "logistics", "rental", "tooling", "subcontracting", "technical support", "mep", "installation", "hac"
-]
-
-COMPANIES = [
-    "skanska", "mercury", "flynn", "ttk", "winthrop", "vantage", "equinix", "aws", "meta", "google", "ntt",
-    "astron", "atlas", "cemex", "cersanit", "cmt", "crown", "daldehog", "eurobox", "euroglas", "exbud",
-    "ferrcon", "firetech", "glent", "grupa azoty", "hochtief", "ikea", "lafarge", "mostostal", "mtm",
-    "nordec", "orlen", "pern", "pepsico", "polpharma", "porr", "rembud", "royal sub", "sanin", "starmet",
-    "spec bau", "theta", "toolmex", "t-mobile", "ilv", "generiks", "fam", "marbet", "polsat",
-    "nami development", "john paul construction", "gloster", "harder", "globalworth", "grudzeń las", "hutchinson"
+    "mep", "hvac", "cooling", "ventilation", "bms", "heat recovery", "vrf", "rooftop unit",
+    "ductwork", "airflow", "fire protection", "commissioning", "fit-out", "structured cabling",
+    "electrical installation", "electrical infrastructure", "ups", "genset", "containment",
+    "electrical", "mechanical", "power", "technical room", "building envelope", "raised floor",
+    "concrete frame", "steel structure", "clean room", "data center", "dc cooling",
+    "prefabrication", "prefab", "pipe installation", "pipework", "steel prefabrication",
+    "spawanie", "welding", "rury", "pipes", "kanały", "ducts", "izolacja", "insulation",
+    "montaż", "installation", "montaz rurociągów", "pipe assembly", "metal fabrication",
+    "sheet metal", "pipe supports", "structure supports", "konstrukcje stalowe", "stalowe kanały",
+    "wsporniki", "podpory", "technical services", "fabrication", "warsztat", "workshop",
+    "engineering support", "on-site installation", "assembly", "prefabrykacja", "trays",
+    "drip trays", "drain trays", "ociekowe", "tace ociekowe", "mezzanine", "platform",
+    "pomiar", "pomiary", "3d scanning", "inwentaryzacja", "cad", "projektowanie", "3d model",
+    "laser scanning", "scan to bim", "3d documentation", "revit", "modelowanie"
 ]
 
 COUNTRIES = {
@@ -65,21 +58,15 @@ COUNTRIES = {
 
 FEEDS = {
     "DCD": "https://www.datacenterdynamics.com/en/rss/",
-    "BuildInDigital": "https://www.buildindigital.com/feed/",
-    "ComputerWeekly": "https://www.computerweekly.com/rss/All-Computer-Weekly-content.xml",
-    "TED": "https://ted.europa.eu/TED/rss/en/RSS_ALL.xml",
-    "ITwiz": "https://itwiz.pl/feed/",
     "Data Economy": "https://data-economy.com/feed/",
     "Capacity Media": "https://www.capacitymedia.com/rss/news",
-    "BNP Paribas RE": "https://www.realestate.bnpparibas.com/rss.xml",
+    "Construction Index UK": "https://www.theconstructionindex.co.uk/news/rss/news",
     "Commercial Property Exec": "https://www.commercialsearch.com/news/feed/",
-    "Business Wire Tech": "https://www.businesswire.com/portal/site/home/news/?vns=rss_tech-latest",
     "PR Newswire Infra": "https://www.prnewswire.com/rss/subject/infrastructure.xml",
     "InfraNews": "https://www.inframationnews.com/rss.xml",
-    "Construction Index UK": "https://www.theconstructionindex.co.uk/news/rss/news",
-    "Irish Construction News": "https://constructionnews.ie/feed/",
-    "Zajawka": "https://zajawka.pl/feed/",
-    "Eurobuild CEE": "https://eurobuildcee.com/rss/"
+    "BNP Paribas RE": "https://www.realestate.bnpparibas.com/rss.xml",
+    "ITwiz": "https://itwiz.pl/feed/",
+    "Irish Construction News": "https://constructionnews.ie/feed/"
 }
 
 def detect_country(text):
@@ -91,10 +78,11 @@ def detect_country(text):
 def is_high_potential(text):
     text = text.lower()
     return (
-        any(f in text for f in COMPANIES) and
+        "data center" in text and
         any(s in text for s in SERVICE_KEYWORDS) and
         any(t in text for t in TENDER_KEYWORDS)
     )
+
 try:
     df_old = pd.read_csv("data_center_monitoring.csv")
 except:
@@ -103,7 +91,7 @@ except:
 new_records = []
 
 for source, url in FEEDS.items():
-    feed = safe_parse(url)  # ZAMIANA feedparser.parse → safe_parse
+    feed = safe_parse(url)
     for entry in feed.entries:
         title = entry.get("title", "")
         summary = entry.get("summary", "")
@@ -114,7 +102,11 @@ for source, url in FEEDS.items():
         if not country:
             continue
 
-        if not any(k in content for k in TENDER_KEYWORDS):
+        if not (
+            "data center" in content and
+            any(k in content for k in TENDER_KEYWORDS) and
+            any(s in content for s in SERVICE_KEYWORDS)
+        ):
             continue
 
         warto = is_high_potential(content)
@@ -131,31 +123,27 @@ df_new = pd.DataFrame(new_records)
 df_combined = pd.concat([df_old, df_new]).drop_duplicates(subset=["Link"])
 df_combined.to_csv("data_center_monitoring.csv", index=False)
 
-# Wykresy
 if len(df_combined) > 0:
     df_combined['Data'] = pd.to_datetime(df_combined['Data'], errors='coerce')
     df_combined['Miesiąc'] = df_combined['Data'].dt.to_period('M').astype(str)
-
     df_combined['Kraj'].value_counts().plot(kind='bar', title="Projekty wg kraju")
     plt.tight_layout()
     plt.savefig("projekty_wg_kraju.png")
     plt.clf()
-
     df_combined['Miesiąc'].value_counts().sort_index().plot(kind='line', marker='o', title="Projekty wg miesiąca")
     plt.tight_layout()
     plt.savefig("projekty_wg_miesiaca.png")
     plt.clf()
-# Wysyłka mail i Discord
+
 if len(df_new) > 0:
     high = df_new[df_new["WARTO_ANALIZY"] == "TAK"]
     normal = df_new[df_new["WARTO_ANALIZY"] == ""]
 
-    # Wysyłka maila
     if EMAIL and PASSWORD:
         msg = MIMEMultipart()
         msg['From'] = EMAIL
         msg['To'] = EMAIL
-        msg['Subject'] = "📡 Nowe Projekty Data Center"
+        msg['Subject'] = "📡 Nowe Projekty Data Center – CSA/MEP"
 
         body = "<h3>🔶 WARTO ANALIZY:</h3><ul>"
         for _, r in high.iterrows():
@@ -181,17 +169,15 @@ if len(df_new) > 0:
         server.send_message(msg)
         server.quit()
 
-    # Wysyłka Discord Webhook
     if WEBHOOK_URL:
-        msg = "**🔶 WARTO ANALIZY:**\\n" if not high.empty else ""
+        msg = "**🔶 WARTO ANALIZY:**\n" if not high.empty else ""
         for _, r in high.iterrows():
-            msg += f"• {r['Firma']} → {r['Link']}\\n"
-        msg += "\\n**🔹 Pozostałe:**\\n" if not normal.empty else ""
+            msg += f"• {r['Firma']} → {r['Link']}\n"
+        msg += "\n**🔹 Pozostałe:**\n" if not normal.empty else ""
         for _, r in normal.iterrows():
-            msg += f"• {r['Firma']} → {r['Link']}\\n"
+            msg += f"• {r['Firma']} → {r['Link']}\n"
 
         requests.post(WEBHOOK_URL, json={"content": msg.strip()})
-
         for file in ["projekty_wg_kraju.png", "projekty_wg_miesiaca.png"]:
             if os.path.exists(file):
                 with open(file, "rb") as f:
