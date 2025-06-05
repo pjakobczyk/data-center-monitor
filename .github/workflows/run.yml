@@ -26,7 +26,7 @@ jobs:
           EMAIL_USER: ${{ secrets.EMAIL_USER }}
           EMAIL_PASS: ${{ secrets.EMAIL_PASS }}
           WEBHOOK_URL: ${{ secrets.WEBHOOK_URL }}
-        run: python main_larget_datacenter.py
+        run: python main_retry.py
 
       - name: Commit output file exists
         run: |
