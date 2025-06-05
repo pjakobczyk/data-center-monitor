@@ -39,4 +39,7 @@ country_keywords = {
 
 def detect_country(text):
     for country, keywords in country_keywords.items():
-        if any(word in text for
+        if any(word in text for word in keywords):
+            return country
+    return None
+
