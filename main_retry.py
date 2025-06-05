@@ -126,8 +126,13 @@ if len(df_combined) > 0:
     plt.clf()
 
 # Wysyłka nawet jeśli df_new == 0
-high = df_new[df_new["WARTO_ANALIZY"] == "TAK"]
-normal = df_new[df_new["WARTO_ANALIZY"] == ""]
+if "WARTO_ANALIZY" in df_new.columns:
+    high = df_new[df_new["WARTO_ANALIZY"] == "TAK"]
+    normal = df_new[df_new["WARTO_ANALIZY"] == ""]
+else:
+    high = pd.DataFrame()
+    normal = pd.DataFrame()
+
 
 msg_text = ""
 if not df_new.empty:
