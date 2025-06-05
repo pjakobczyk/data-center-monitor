@@ -13,7 +13,8 @@ WEBHOOK_URL = os.getenv("WEBHOOK_URL")
 
 KEYWORDS = [
     "data center", "datacenter", "campus", "tender", "project", "CSA",
-    "Wicklow", "Frankfurt", "Norway", "Sweden", "Finland", "Denmark", "Ireland", "Germany",
+    "Wicklow", "Frankfurt", "Warsaw", "Wrocław", "Kraków", "Poznan", "Gdańsk",
+    "Norway", "Sweden", "Finland", "Denmark", "Ireland", "Germany", "Poland",
     "Echelon", "Equinix", "Interxion", "Vantage",
     "Winthrop", "Mercury", "Dornan", "Flynn", "TTK",
     "general contractor", "EPC", "MEP"
@@ -25,6 +26,22 @@ FEEDS = {
     "The Local – Sweden": "https://www.thelocal.se/tag/data-centre/rss",
     "Nordic DCD": "https://www.datacenterdynamics.com/en/news/?region=nordics"
 }
+
+country_keywords = {
+    "Ireland": ["ireland", "dublin", "wicklow", "eirgrid"],
+    "Germany": ["germany", "frankfurt", "berlin", "munich"],
+    "Poland": ["poland", "warsaw", "wroclaw", "krakow", "poznan", "gdansk"],
+    "Sweden": ["sweden", "stockholm"],
+    "Norway": ["norway", "oslo"],
+    "Finland": ["finland", "helsinki"],
+    "Denmark": ["denmark", "copenhagen"]
+}
+
+def detect_country(text):
+    for country, keywords in country_keywords.items():
+        if any(word in text for word in keywords):
+            return country
+    return None
 
 try:
     df_old = pd.read_excel("data_center_monitoring.xlsx")
@@ -42,9 +59,13 @@ for source, url in FEEDS.items():
         content = f"{title} {summary}".lower()
 
         if any(k.lower() in content for k in KEYWORDS):
+            country = detect_country(content)
+            if not country:
+                continue  # pomiń nieobsługiwane kraje
+
             new_records.append({
                 "Data pozyskania": datetime.now().strftime("%Y-%m-%d %H:%M"),
-                "Kraj": "(do uzupełnienia)",
+                "Kraj": country,
                 "Miasto / Lokalizacja": "(do uzupełnienia)",
                 "Firma / Projekt": title[:60],
                 "Typ": "(do uzupełnienia)",
