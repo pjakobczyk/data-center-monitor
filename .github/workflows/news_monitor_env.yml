@@ -27,4 +27,5 @@ jobs:
           EMAIL_RECIPIENT: ${{ secrets.EMAIL_RECIPIENT }}
           GMAIL_USER: ${{ secrets.GMAIL_USER }}
           GMAIL_PASSWORD: ${{ secrets.GMAIL_PASSWORD }}
-        run: python news_monitor_gmail.py
+        run: python news_monitor_gmail_filtered.py
+
