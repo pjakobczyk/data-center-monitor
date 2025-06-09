@@ -1,4 +1,3 @@
-
 import feedparser
 import pandas as pd
 import matplotlib.pyplot as plt
@@ -10,10 +9,23 @@ from email.mime.base import MIMEBase
 from email import encoders
 import requests
 import os
+import json
 
 EMAIL = os.getenv("EMAIL_USER")
 PASSWORD = os.getenv("EMAIL_PASS")
 WEBHOOK_URL = os.getenv("WEBHOOK_URL")
+
+SENT_ARTICLES_FILE = "sent_articles.json"
+
+def load_sent_articles():
+    if not os.path.exists(SENT_ARTICLES_FILE):
+        return set()
+    with open(SENT_ARTICLES_FILE, "r", encoding="utf-8") as f:
+        return set(json.load(f))
+
+def save_sent_articles(sent_links):
+    with open(SENT_ARTICLES_FILE, "w", encoding="utf-8") as f:
+        json.dump(list(sent_links), f, indent=2)
 
 def safe_parse(url):
     try:
@@ -78,14 +90,18 @@ try:
 except:
     df_old = pd.DataFrame(columns=["Data", "Kraj", "Firma", "Opis", "Link", "WARTO_ANALIZY"])
 
+sent_links = load_sent_articles()
 new_records = []
 
 for source, url in FEEDS.items():
     feed = safe_parse(url)
     for entry in feed.entries:
+        link = entry.get("link", "")
+        if link in sent_links:
+            continue
+
         title = entry.get("title", "")
         summary = entry.get("summary", "")
-        link = entry.get("link", "")
         content = f"{title} {summary}".lower()
 
         country = detect_country(content)
@@ -109,6 +125,8 @@ for source, url in FEEDS.items():
             "WARTO_ANALIZY": "TAK" if warto else ""
         })
 
+        sent_links.add(link)
+
 df_new = pd.DataFrame(new_records)
 df_combined = pd.concat([df_old, df_new]).drop_duplicates(subset=["Link"])
 df_combined.to_csv("data_center_monitoring.csv", index=False)
@@ -125,53 +143,4 @@ if len(df_combined) > 0:
     plt.savefig("projekty_wg_miesiaca.png")
     plt.clf()
 
-# Wysyłka nawet jeśli df_new == 0
-if "WARTO_ANALIZY" in df_new.columns:
-    high = df_new[df_new["WARTO_ANALIZY"] == "TAK"]
-    normal = df_new[df_new["WARTO_ANALIZY"] == ""]
-else:
-    high = pd.DataFrame()
-    normal = pd.DataFrame()
-
-
-msg_text = ""
-if not df_new.empty:
-    msg_text += "**🔶 WARTO ANALIZY:**\n" if not high.empty else ""
-    for _, r in high.iterrows():
-        msg_text += f"• {r['Firma']} → {r['Link']}\n"
-    msg_text += "\n**🔹 Pozostałe:**\n" if not normal.empty else ""
-    for _, r in normal.iterrows():
-        msg_text += f"• {r['Firma']} → {r['Link']}\n"
-else:
-    msg_text = "🚫 Brak nowych dopasowań spełniających kryteria (data center + CSA/MEP)."
-
-if EMAIL and PASSWORD:
-    msg = MIMEMultipart()
-    msg['From'] = EMAIL
-    msg['To'] = EMAIL
-    msg['Subject'] = "📡 Raport Data Center – CSA/MEP"
-
-    body = f"<pre>{msg_text}</pre>"
-    msg.attach(MIMEText(body, 'html'))
-
-    for file in ["projekty_wg_kraju.png", "projekty_wg_miesiaca.png", "data_center_monitoring.csv"]:
-        if os.path.exists(file):
-            with open(file, "rb") as f:
-                part = MIMEBase('application', 'octet-stream')
-                part.set_payload(f.read())
-                encoders.encode_base64(part)
-                part.add_header('Content-Disposition', f'attachment; filename= {file}')
-                msg.attach(part)
-
-    server = smtplib.SMTP('smtp.gmail.com', 587)
-    server.starttls()
-    server.login(EMAIL, PASSWORD)
-    server.send_message(msg)
-    server.quit()
-
-if WEBHOOK_URL:
-    requests.post(WEBHOOK_URL, json={"content": msg_text.strip()})
-    for file in ["projekty_wg_kraju.png", "projekty_wg_miesiaca.png"]:
-        if os.path.exists(file):
-            with open(file, "rb") as f:
-                requests.post(WEBHOOK_URL, files={"file": (file, f)})
+if "WARTO_ANALIZY" in_
