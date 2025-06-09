@@ -2,8 +2,10 @@ name: Run Data Center Monitor
 
 on:
   schedule:
-    - cron: "0 * * * *"  # co godzinę
+    - cron: '0 6,18 * * 1-4'
+    - cron: '0 6 * * 5'
   workflow_dispatch:
+
 
 jobs:
   run-script:
