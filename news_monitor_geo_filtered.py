@@ -17,6 +17,26 @@ RSS_FEEDS = [
     "https://www.theregister.com/data_centre/headlines.atom",
     "https://feeds.arstechnica.com/arstechnica/index",
     "https://www.techrepublic.com/rssfeeds/articles/"
+    "https://www.datacenterdynamics.com",
+    "https://cloudscene.com",
+    "https://www.datacentermap.com",
+    "https://www.dcbyte.com",
+    "https://dcm-alliance.de",
+    "https://www.energate-messenger.de",
+    "https://www.baunetz.de",
+    "https://www.linkedin.com",
+    "https://www.businesspost.ie",
+    "https://irishbuildingmagazine.ie",
+    "https://www.planningalerts.ie",
+    "https://byggfakta.se",
+    "https://www.digiinfra.com",
+    "https://www.tendersnordic.com",
+    "https://www.propertynews.pl",
+    "https://www.propertydesign.pl",
+    "https://www.rynekinfrastruktury.pl",
+    "https://ted.europa.eu"
+    "https://www.constructionenquirer.com",
+    "https://www.datacentermap.com",
 ]
 
 MANDATORY_KEYWORDS = ["data center", "data centre", "datacenter"]
